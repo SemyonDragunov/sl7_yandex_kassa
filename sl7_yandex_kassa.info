@@ -1,0 +1,13 @@
+name = Yandex Kassa
+description = Модуль оплаты через Yandex Kassa.
+package = SL7
+version = 7.x-1.0
+core = 7.x
+
+configure = admin/control-panel/payment/yandex-kassa
+
+files[] = includes/sl7_yandex_kassa.controller.inc
+
+dependencies[] = sl7_control_panel
+dependencies[] = sl7_payment
+dependencies[] = entityreference

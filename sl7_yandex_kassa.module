@@ -1,0 +1,229 @@
+<?php
+
+/**
+ * @files
+ * SL7 Yandex Kass module.
+ * 
+ * @author Semyon Dragunov <sam.dragunov@gmail.com>
+ * https://github.com/SemyonDragunov
+ */
+
+define('SL7_YANDEX_KASSA_PATH', SL7_CONTROL_PANEL_ADMIN_PATH . '/payment/yandex-kassa');
+
+/**
+ * Implements hook_menu()
+ */
+function sl7_yandex_kassa_menu() {
+
+  $items[SL7_YANDEX_KASSA_PATH] = array(
+    'title' => 'Яндекс Касса',
+    'description' => 'Настройки Robokassa.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sl7_yandex_kassa_settings_form'),
+    'access arguments' => array('administer sl7_yandex_kassa'),
+  );
+  $items[SL7_YANDEX_KASSA_PATH . '/settings'] = array(
+    'title' => t('Settings'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['sl7/yandex-kassa/check'] = array(
+    'title' => 'Result',
+    'page callback' => 'sl7_yandex_kassa_check',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  $items['sl7/yandex-kassa/aviso'] = array(
+    'title' => 'Result',
+    'page callback' => 'sl7_yandex_kassa_aviso',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_sl7_payment_info()
+ */
+function sl7_yandex_kassa_sl7_payment_info() {
+
+  $payment['sl7_yandex_kassa'] = array(
+    'controller' => 'SL7YandexKassaPaymentController',
+    'callback' => 'sl7_yandex_kassa_callback',
+    'title' => 'Яндекс Касса',
+    'description' => 'Пластиковые карты, Яндекс.Деньги, WebMoney, Сотовый телефон и прочее.',
+    'img' => drupal_get_path('module', 'sl7_yandex_kassa') . '/img/yandex_kassa.png',
+    'access' => TRUE,
+  );
+
+  return $payment;
+}
+
+/**
+ * Implement hook_permission()
+ */
+function sl7_yandex_kassa_permission() {
+  return array(
+    'administer sl7_yandex_kassa' => array('title' => 'Управлять настройками Яндекс Кассы.'),
+  );
+}
+
+function sl7_yandex_kassa_callback($order) {
+  $ajax = $_GET['q'] == 'system/ajax' ? TRUE : FALSE;
+  sl7_payment_get_controller('sl7_yandex_kassa')->external($order, $ajax);
+}
+
+function sl7_yandex_kassa_check() {
+  sl7_payment_get_controller('sl7_yandex_kassa')->processRequest($_POST);
+}
+
+function sl7_yandex_kassa_aviso() {
+  sl7_order_enroll_check_sum($_POST['orderNumber'], 'sl7_yandex_kassa', $_POST['orderSumAmount']);
+  sl7_payment_get_controller('sl7_yandex_kassa')->processRequest($_POST);
+}
+
+function sl7_yandex_kassa_server_name($name = NULL) {
+  $name_all = array(
+    'test' => 'Тестовый',
+    'work' => 'Рабочий',
+  );
+
+  if (array_key_exists($name, $name_all)) {
+    return $name_all[$name];
+  }
+
+  return $name_all;
+}
+
+function sl7_yandex_kassa_server_url($server) {
+  switch ($server) {
+    case 'test':
+      return 'https://demomoney.yandex.ru/eshop.xml';
+    case 'work':
+      return 'https://money.yandex.ru/eshop.xml';
+  }
+}
+
+function sl7_yandex_kassa_settings_form($form, &$form_state) {
+
+  $form['sl7_yandex_kassa_shopid'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Идентификатор магазина shopId',
+    '#default_value' => variable_get('sl7_yandex_kassa_shopid'),
+    '#element_validate' => array('element_validate_integer_positive'),
+    '#size' => 60,
+    '#maxlength' => 255,
+    '#required' => TRUE,
+  );
+  $form['sl7_yandex_kassa_scid'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Идентификатор витрины scid',
+    '#default_value' => variable_get('sl7_yandex_kassa_scid'),
+    '#element_validate' => array('element_validate_integer_positive'),
+    '#size' => 60,
+    '#maxlength' => 255,
+    '#required' => TRUE,
+  );
+  $form['sl7_yandex_kassa_shoppassword'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Пароль shopPassword',
+    '#default_value' => variable_get('sl7_yandex_kassa_shoppassword', ''),
+    '#size' => 60,
+    '#maxlength' => 255,
+    '#required' => TRUE,
+  );
+  $form['sl7_yandex_kassa_server_name'] = array(
+    '#title' => 'Адрес платежного шлюза',
+    '#type' => 'radios',
+    '#default_value' => variable_get('sl7_yandex_kassa_server_name', 'test'),
+    '#options' => sl7_yandex_kassa_server_name(),
+    '#required' => TRUE,
+  );
+
+  $form['sl7_yandex_kassa_success_select'] = array(
+    '#type' => 'radios',
+    '#title' => 'Success URL',
+    '#description' => 'Страница успешной оплаты.',
+    '#options' => array(
+      'setting' => 'Из настроек Яндекс Кассы',
+      'own' => 'Свой',
+    ),
+    '#default_value' => variable_get('sl7_yandex_kassa_success_select', 'setting'),
+  );
+  $form['sl7_yandex_kassa_success_url'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Свой Success URL',
+    '#default_value' => variable_get('sl7_yandex_kassa_success_url', ''),
+    '#size' => 60,
+    '#maxlength' => 255,
+    '#states' => array(
+      'visible' => array(
+        'input[name="sl7_yandex_kassa_success_select"]' => array(
+          'value' => 'own',
+        ),
+      ),
+    ),
+  );
+
+  $form['sl7_yandex_kassa_fail_select'] = array(
+    '#type' => 'radios',
+    '#title' => 'Fail URL',
+    '#description' => 'Страница неудачной оплаты.',
+    '#options' => array(
+      'setting' => 'Из настроек Яндекс Кассы',
+      'own' => 'Свой',
+    ),
+    '#default_value' => variable_get('sl7_yandex_kassa_fail_select', 'setting'),
+  );
+  $form['sl7_yandex_kassa_fail_url'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Свой Fail URL',
+    '#default_value' => variable_get('sl7_yandex_kassa_fail_url'),
+    '#size' => 60,
+    '#maxlength' => 255,
+    '#states' => array(
+      'visible' => array(
+        'input[name="sl7_yandex_kassa_fail_select"]' => array(
+          'value' => 'own',
+        ),
+      ),
+    ),
+  );
+
+  $form['sl7_yandex_kassa_default_select'] = array(
+    '#type' => 'radios',
+    '#title' => 'Default URL',
+    '#description' => 'Страница ведущая с кнопки "Вернутся в магазин".',
+    '#options' => array(
+      'setting' => 'Из настроек Яндекс Кассы',
+      'own' => 'Свой',
+    ),
+    '#default_value' => variable_get('sl7_yandex_kassa_default_select', 'setting'),
+  );
+  $form['sl7_yandex_kassa_default_url'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Свой Default URL',
+    '#default_value' => variable_get('sl7_yandex_kassa_default_url'),
+    '#size' => 60,
+    '#maxlength' => 255,
+    '#states' => array(
+      'visible' => array(
+        'input[name="sl7_yandex_kassa_default_select"]' => array(
+          'value' => 'own',
+        ),
+      ),
+    ),
+  );
+
+  return system_settings_form($form);
+}
+
+function sl7_yandex_kassa_settings_form_validate($form, &$form_state) {
+  if ($form_state['values']['sl7_yandex_kassa_success_select'] == 'own' && !valid_url($form_state['values']['sl7_yandex_kassa_success_url'])) {
+    form_set_error('sl7_yandex_kassa_success_url', 'Не верный адрес страницы.');
+  }
+  if ($form_state['values']['sl7_yandex_kassa_fail_select'] == 'own' && !valid_url($form_state['values']['sl7_yandex_kassa_fail_url'])) {
+    form_set_error('sl7_yandex_kassa_fail_url', 'Не верный адрес страницы.');
+  }
+}
