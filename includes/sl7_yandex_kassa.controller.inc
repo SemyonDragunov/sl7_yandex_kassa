@@ -160,7 +160,7 @@ class SL7YandexKassaPaymentController extends SL7PaymentController
       exit;
     }
     else {
-      drupal_goto($url, array('query' => $this->_query($order)));
+      drupal_goto($url, array('query' => $this->_query($order), 'external' => TRUE));
     }
   }
 }
