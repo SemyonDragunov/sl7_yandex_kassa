@@ -16,8 +16,8 @@ define('SL7_YANDEX_KASSA_PATH', SL7_CONTROL_PANEL_ADMIN_PATH . '/payment/yandex-
 function sl7_yandex_kassa_menu() {
 
   $items[SL7_YANDEX_KASSA_PATH] = array(
-    'title' => 'Яндекс Касса',
-    'description' => 'Настройки Robokassa.',
+    'title' => 'Яндекс.Касса',
+    'description' => 'Настройки Яндекс.Кассы.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('sl7_yandex_kassa_settings_form'),
     'access arguments' => array('administer sl7_yandex_kassa'),
