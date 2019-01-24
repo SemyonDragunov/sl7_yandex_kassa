@@ -106,6 +106,10 @@ function sl7_yandex_kassa_server_url($server) {
 }
 
 function sl7_yandex_kassa_settings_form($form, &$form_state) {
+	
+  $form['notice'] = array(
+    '#markup' => '<div><strong>Минимальная стоимость платежа должна быть более 100 р.</strong></div>'
+  );
 
   $form['sl7_yandex_kassa_shopid'] = array(
     '#type' => 'textfield',
